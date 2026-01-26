@@ -1,0 +1,9 @@
+services:
+  app:
+    image: ghcr.io/nhutanhmc/glasseye:latest
+    container_name: glasseye_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
