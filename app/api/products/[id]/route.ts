@@ -8,9 +8,12 @@ function isObjectId(id: string) {
   return /^[a-fA-F0-9]{24}$/.test(id);
 }
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
+// Sửa kiểu dữ liệu của ctx.params thành Promise
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const id = ctx.params.id;
+    // Thêm await ở đây
+    const { id } = await ctx.params; 
+
     if (!isObjectId(id)) {
       return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
     }
@@ -24,11 +27,13 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireAdmin(req);
 
-    const id = ctx.params.id;
+    // Thêm await ở đây
+    const { id } = await ctx.params;
+
     if (!isObjectId(id)) {
       return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
     }
@@ -39,7 +44,6 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
     const updateData: any = { ...data };
     if (typeof data.slug === "string" && data.slug.trim()) updateData.slug = slugify(data.slug);
     if (typeof data.name === "string" && (!data.slug || !data.slug.trim())) {
-      // nếu đổi name mà không gửi slug -> auto đổi slug theo name
       updateData.slug = slugify(data.name);
     }
 
@@ -61,11 +65,13 @@ export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-export async function DELETE(req: Request, ctx: { params: { id: string } }) {
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireAdmin(req);
 
-    const id = ctx.params.id;
+    // Thêm await ở đây
+    const { id } = await ctx.params;
+
     if (!isObjectId(id)) {
       return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
     }
