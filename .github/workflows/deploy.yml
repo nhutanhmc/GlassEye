@@ -64,6 +64,6 @@ jobs:
                   - "3000:3000"
             EOF
 
-            docker compose pull
-            docker compose up -d
+            docker-compose pull
+            docker-compose up -d
             docker image prune -f
