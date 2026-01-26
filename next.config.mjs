@@ -9,6 +9,7 @@ const nextConfig = {
       },
     ],
   },
-}
+  // Các cấu hình khác của bạn nếu có...
+};
 
-module.exports = nextConfig
+export default nextConfig; // Dùng export default thay cho module.exports
