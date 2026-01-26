@@ -44,7 +44,6 @@ jobs:
             mkdir -p /opt/glasseye
             cd /opt/glasseye
 
-            # write .env from GitHub secret (optional but convenient)
             cat > .env << 'EOF'
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
@@ -53,7 +52,6 @@ jobs:
             CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
             EOF
 
-            # write compose (or you can scp your own)
             cat > docker-compose.yml << 'EOF'
             services:
               app:

@@ -18,15 +18,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# copy only what we need
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-
-# If you use next.config.* or other runtime files, uncomment:
-# COPY --from=builder /app/next.config.* ./
-# COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
 CMD ["npm","run","start"]
