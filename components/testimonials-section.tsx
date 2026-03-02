@@ -77,6 +77,7 @@ export function TestimonialsSection() {
                     src={testimonial.image || "/placeholder.svg"}
                     alt={testimonial.name}
                     fill
+                    sizes="100px"
                     className="object-cover"
                   />
                 </div>
