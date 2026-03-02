@@ -80,6 +80,7 @@ export function BannerCarousel() {
               src={banner.image || "/placeholder.svg"}
               alt={banner.title}
               fill
+              sizes="100vw"
               className="object-cover" /* Đảm bảo ảnh luôn lấp đầy khung hình */
               priority={index === 0}
               quality={100} /* Tăng chất lượng ảnh vì ảnh giờ rất to */

@@ -8,6 +8,7 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    qualities: [100, 75],
   },
   // Các cấu hình khác của bạn nếu có...
 };
