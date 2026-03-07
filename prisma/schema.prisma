@@ -7,11 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum OrderStatus {
-  PENDING
-  PAID
-  SHIPPED
-  CANCELLED
+// ==========================================
+// 1. HỆ THỐNG USER & PHÂN QUYỀN
+// ==========================================
+enum Role {
+  GUEST
+  USER
+  ADMIN
 }
 
 model User {
@@ -22,98 +24,39 @@ model User {
   name         String?
   phone        String?
 
-  orders       Order[]
-
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
-enum Role {
-  GUEST
-  USER
-  ADMIN
+// ==========================================
+// 2. HỆ THỐNG SẢN PHẨM (MẮT KÍNH & BỘ SƯU TẬP)
+// ==========================================
+model Collection {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  description String?
+  thumbnail   String?  
+  
+  glasses     Glass[]  
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model Category {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   @unique
-  slug      String   @unique
+model Glass {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  description  String?
+  price        Float
+  
+  images       String[]   
+  attributes   Json?      
+  
+  collectionId String     @db.ObjectId
+  collection   Collection @relation(fields: [collectionId], references: [id])
 
-  products  Product[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  createdAt DateTime @default(now())
-}
-
-model Product {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  slug          String   @unique
-  brand         String?
-  description   String?
-
-  price         Int
-  salePrice     Int?
-  inStock       Int      @default(0)
-  isActive      Boolean  @default(true)
-
-  imageUrl      String?
-  imagePublicId String?
-
-  categoryId    String?   @db.ObjectId
-  category      Category? @relation(fields: [categoryId], references: [id])
-
-  orderItems    OrderItem[]
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([categoryId])
-}
-
-
-model Order {
-  id            String      @id @default(auto()) @map("_id") @db.ObjectId
-
-  // relation User (optional)
-  userId        String?     @db.ObjectId
-  user          User?       @relation(fields: [userId], references: [id])
-
-  status        OrderStatus @default(PENDING)
-
-  // shipping snapshot
-  customerName  String
-  customerPhone String
-  address       String
-  note          String?
-
-  // totals snapshot
-  subtotal      Int
-  shippingFee   Int         @default(0)
-  total         Int
-
-  items         OrderItem[]
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([userId])
-  @@index([status])
-}
-
-model OrderItem {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-
-  orderId   String  @db.ObjectId
-  order     Order   @relation(fields: [orderId], references: [id])
-
-  productId String  @db.ObjectId
-  product   Product @relation(fields: [productId], references: [id])
-
-  // snapshot lúc mua
-  name      String
-  price     Int
-  qty       Int
-
-  @@index([orderId])
-  @@index([productId])
+  @@index([collectionId])
 }

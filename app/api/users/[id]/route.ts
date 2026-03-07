@@ -1,30 +1,31 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../server/db/prisma";
-import { requireAdmin } from "../../../../server/middlewares/auth";
+import { prisma } from "@/server/db/prisma";
+import { requireAdmin } from "@/server/middlewares/auth";
 
 function isObjectId(id: string) {
   return /^[a-fA-F0-9]{24}$/.test(id);
 }
 
+// Lấy thông tin chi tiết 1 user
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
     if (!isObjectId(id)) return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
 
-    // Gọi vào bảng glass
-    const item = await prisma.glass.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id },
-      include: { collection: true }, 
+      select: { id: true, email: true, role: true, name: true, phone: true, createdAt: true },
     });
-    
-    if (!item) return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
 
-    return NextResponse.json({ success: true, item });
+    if (!user) return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
+
+    return NextResponse.json({ success: true, item: user });
   } catch {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
 
+// Cập nhật User (Thường Admin chỉ dùng để đổi Role hoặc sửa sđt/tên)
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireAdmin(req);
@@ -32,22 +33,19 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!isObjectId(id)) return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
 
     const body = await req.json();
-
-    // Lọc ra đúng những trường DB mới đang cần (bỏ qua slug, brand, inStock... từ FE cũ gửi lên để không bị lỗi Prisma)
     const updateData: any = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.price !== undefined) updateData.price = Number(body.price);
-    if (body.attributes !== undefined) updateData.attributes = body.attributes;
-    if (body.images !== undefined) updateData.images = body.images;
-    
-    // Hỗ trợ FE truyền field cũ là categoryId
-    if (body.collectionId) updateData.collectionId = body.collectionId;
-    else if (body.categoryId) updateData.collectionId = body.categoryId; 
 
-    const updated = await prisma.glass.update({
+    // Chỉ cho phép update những trường an toàn
+    if (body.role && ["ADMIN", "USER", "GUEST"].includes(body.role)) {
+      updateData.role = body.role;
+    }
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+
+    const updated = await prisma.user.update({
       where: { id },
       data: updateData,
+      select: { id: true, email: true, role: true, name: true, phone: true },
     });
 
     return NextResponse.json({ success: true, item: updated });
@@ -58,13 +56,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 }
 
+// Xóa User
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireAdmin(req);
     const { id } = await ctx.params;
     if (!isObjectId(id)) return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
 
-    await prisma.glass.delete({ where: { id } });
+    await prisma.user.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     const msg = String(err?.message || "");

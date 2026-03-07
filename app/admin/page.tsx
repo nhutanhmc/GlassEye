@@ -2,341 +2,323 @@
 
 import { useEffect, useState } from 'react';
 
-type Product = {
-  id: string;
-  name: string;
-  price: number;
-  salePrice?: number | null;
-  inStock: number;
-  isActive: boolean;
-  imageUrl?: string | null;
-};
+// ============================================================================
+// TYPES
+// ============================================================================
+type User = { id: string; email: string; role: string; name: string | null; phone: string | null };
+type Collection = { id: string; name: string; description: string | null; thumbnail: string | null };
+type Glass = { id: string; name: string; description: string | null; price: number; collectionId: string; images: string[] };
 
 function formatVND(v: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
 }
 
+// ============================================================================
+// MAIN COMPONENT (TABS ROUTER)
+// ============================================================================
 export default function AdminPage() {
-  const [items, setItems] = useState<Product[]>([]);
+  const [tab, setTab] = useState<'glasses' | 'collections' | 'users'>('glasses');
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h1>
+        <p className="text-muted-foreground mb-6">Quản lý toàn bộ dữ liệu hệ thống (Yêu cầu quyền ADMIN).</p>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-8 border-b border-border pb-2">
+          <button
+            onClick={() => setTab('glasses')}
+            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'glasses' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+          >
+            Mắt Kính (Glasses)
+          </button>
+          <button
+            onClick={() => setTab('collections')}
+            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'collections' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+          >
+            Bộ Sưu Tập (Collections)
+          </button>
+          <button
+            onClick={() => setTab('users')}
+            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'users' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+          >
+            Tài Khoản (Users)
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {tab === 'glasses' && <GlassTab />}
+        {tab === 'collections' && <CollectionTab />}
+        {tab === 'users' && <UserTab />}
+      </div>
+    </main>
+  );
+}
+
+// ============================================================================
+// 1. GLASS TAB (KẾ THỪA API /api/product)
+// ============================================================================
+function GlassTab() {
+  const [items, setItems] = useState<Glass[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // create form
+  // Form states
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [salePrice, setSalePrice] = useState('');
-  const [inStock, setInStock] = useState('0');
-  const [image, setImage] = useState<File | null>(null);
-
-  // edit modal simple
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editPrice, setEditPrice] = useState('');
-  const [editSalePrice, setEditSalePrice] = useState('');
-  const [editInStock, setEditInStock] = useState('0');
-  const [editIsActive, setEditIsActive] = useState(true);
+  const [collectionId, setCollectionId] = useState('');
+  const [images, setImages] = useState<FileList | null>(null);
 
   const fetchList = async () => {
-    setLoading(true);
-    setMsg(null);
+    setLoading(true); setMsg(null);
     try {
-      const res = await fetch('/api/products?page=1&limit=50', { cache: 'no-store' });
-      const data = await res.json();
-      if (!data?.success) throw new Error('Fetch failed');
-      setItems(data.items || []);
+      const [resGlass, resCol] = await Promise.all([
+        fetch('/api/products?page=1&limit=50', { cache: 'no-store' }),
+        fetch('/api/collection', { cache: 'no-store' })
+      ]);
+      const dataGlass = await resGlass.json();
+      const dataCol = await resCol.json();
+      
+      if (dataGlass.success) setItems(dataGlass.items);
+      if (dataCol.success) setCollections(dataCol.items);
     } catch (e: any) {
-      setItems([]);
-      setMsg(e?.message || 'Failed to load products');
+      setMsg(e?.message || 'Lỗi tải danh sách');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchList();
-  }, []);
+  useEffect(() => { fetchList(); }, []);
 
-  const createProduct = async () => {
-    setMsg(null);
-    if (!name.trim()) return setMsg('Missing name');
-    if (!price.trim()) return setMsg('Missing price');
-    if (!image) return setMsg('Missing image');
-
-    const fd = new FormData();
-    fd.append('name', name.trim());
-    fd.append('price', price.trim());
-    if (salePrice.trim()) fd.append('salePrice', salePrice.trim());
-    fd.append('inStock', inStock.trim() || '0');
-    fd.append('image', image);
-
-    setLoading(true);
+  const createItem = async () => {
+    if (!name || !price || !collectionId) return setMsg('Thiếu thông tin bắt buộc');
+    setLoading(true); setMsg(null);
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        body: fd,
-      });
+      const fd = new FormData();
+      fd.append('name', name);
+      fd.append('description', description);
+      fd.append('price', price);
+      fd.append('collectionId', collectionId);
+      
+      if (images) {
+        for (let i = 0; i < images.length; i++) {
+          fd.append('images', images[i]);
+        }
+      }
+
+      const res = await fetch('/api/products', { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || 'Create failed');
+      if (!res.ok || !data.success) throw new Error(data.message);
 
-      setName('');
-      setPrice('');
-      setSalePrice('');
-      setInStock('0');
-      setImage(null);
-
+      setName(''); setDescription(''); setPrice(''); setCollectionId(''); setImages(null);
       await fetchList();
-      setMsg('Created ✅');
+      setMsg('Thêm mắt kính thành công!');
     } catch (e: any) {
-      setMsg(e?.message || 'Create failed (Bạn đã login ADMIN chưa?)');
+      setMsg(e?.message || 'Lỗi tạo mới');
     } finally {
       setLoading(false);
     }
   };
 
-  const startEdit = (p: Product) => {
-    setEditing(p);
-    setEditName(p.name);
-    setEditPrice(String(p.price));
-    setEditSalePrice(p.salePrice ? String(p.salePrice) : '');
-    setEditInStock(String(p.inStock ?? 0));
-    setEditIsActive(Boolean(p.isActive));
-    setMsg(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editing) return;
+  const deleteItem = async (id: string) => {
+    if (!confirm('Xóa mắt kính này?')) return;
     setLoading(true);
-    setMsg(null);
     try {
-      const res = await fetch(`/api/products/${editing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editName.trim(),
-          price: Number(editPrice),
-          salePrice: editSalePrice.trim() ? Number(editSalePrice) : null,
-          inStock: Number(editInStock),
-          isActive: editIsActive,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || 'Update failed');
-
-      setEditing(null);
+      await fetch(`/api/product/${id}`, { method: 'DELETE' });
       await fetchList();
-      setMsg('Updated ✅');
-    } catch (e: any) {
-      setMsg(e?.message || 'Update failed (ADMIN only)');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteProduct = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
-    setLoading(true);
-    setMsg(null);
-    try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || 'Delete failed');
-      await fetchList();
-      setMsg('Deleted ✅');
-    } catch (e: any) {
-      setMsg(e?.message || 'Delete failed (ADMIN only)');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Admin</h1>
-        <p className="text-muted-foreground mb-6">
-          Create / Edit / Delete products. (Chỉ ADMIN mới làm được)
-        </p>
-
-        {msg && (
-          <div className="mb-6 border border-border bg-secondary/40 rounded-lg p-3 text-sm">
-            {msg}
+    <div className="space-y-6">
+      {msg && <div className="p-3 bg-secondary border border-border rounded-lg">{msg}</div>}
+      
+      {/* Create Form */}
+      <div className="p-5 bg-card border border-border rounded-xl">
+        <h2 className="font-bold mb-4">Thêm Mắt Kính Mới</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input className="p-3 border rounded bg-background" placeholder="Tên kính" value={name} onChange={e => setName(e.target.value)} />
+          <input className="p-3 border rounded bg-background" placeholder="Giá (VND)" type="number" value={price} onChange={e => setPrice(e.target.value)} />
+          <input className="p-3 border rounded bg-background" placeholder="Mô tả" value={description} onChange={e => setDescription(e.target.value)} />
+          <select className="p-3 border rounded bg-background" value={collectionId} onChange={e => setCollectionId(e.target.value)}>
+            <option value="">-- Chọn Bộ Sưu Tập --</option>
+            {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Upload Ảnh (Chọn nhiều ảnh)</label>
+            <input type="file" multiple accept="image/*" className="w-full p-2 border rounded bg-background" onChange={e => setImages(e.target.files)} />
           </div>
-        )}
-
-        {/* Create */}
-        <div className="border border-border rounded-xl p-5 bg-card mb-10">
-          <h2 className="text-lg font-bold mb-4">Create product</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              className="px-4 py-3 border border-border rounded-lg bg-background"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              className="px-4 py-3 border border-border rounded-lg bg-background"
-              placeholder="Price (VND)"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              className="px-4 py-3 border border-border rounded-lg bg-background"
-              placeholder="Sale price (optional)"
-              value={salePrice}
-              onChange={(e) => setSalePrice(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              className="px-4 py-3 border border-border rounded-lg bg-background"
-              placeholder="In stock"
-              value={inStock}
-              onChange={(e) => setInStock(e.target.value)}
-              disabled={loading}
-            />
-            <input
-              type="file"
-              accept="image/*"
-              className="px-4 py-3 border border-border rounded-lg bg-background md:col-span-2"
-              onChange={(e) => setImage(e.target.files?.[0] ?? null)}
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            onClick={createProduct}
-            disabled={loading}
-            className="mt-4 px-5 py-3 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90"
-          >
-            {loading ? 'Working...' : 'Create'}
-          </button>
         </div>
-
-        {/* List */}
-        <div className="border border-border rounded-xl p-5 bg-card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">Products</h2>
-            <button
-              onClick={fetchList}
-              disabled={loading}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-secondary"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : items.length === 0 ? (
-            <p className="text-muted-foreground">No products</p>
-          ) : (
-            <div className="space-y-3">
-              {items.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-4 border border-border rounded-lg p-4">
-                  <div className="min-w-0">
-                    <div className="font-bold text-foreground truncate">{p.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatVND(p.salePrice ?? p.price)} • stock: {p.inStock} • {p.isActive ? 'Active' : 'Hidden'}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => startEdit(p)}
-                      className="px-3 py-2 border border-border rounded-lg hover:bg-secondary"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteProduct(p.id)}
-                      className="px-3 py-2 border border-border rounded-lg hover:bg-secondary"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Edit modal */}
-        {editing && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" onClick={() => !loading && setEditing(null)} />
-            <div className="relative w-[92vw] max-w-lg bg-card border border-border rounded-xl p-6">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-lg font-bold">Edit product</h3>
-                <button onClick={() => !loading && setEditing(null)} className="text-muted-foreground hover:text-foreground">✕</button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  className="px-4 py-3 border border-border rounded-lg bg-background"
-                  placeholder="Name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  disabled={loading}
-                />
-                <input
-                  className="px-4 py-3 border border-border rounded-lg bg-background"
-                  placeholder="Price"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                  disabled={loading}
-                />
-                <input
-                  className="px-4 py-3 border border-border rounded-lg bg-background"
-                  placeholder="Sale price (optional)"
-                  value={editSalePrice}
-                  onChange={(e) => setEditSalePrice(e.target.value)}
-                  disabled={loading}
-                />
-                <input
-                  className="px-4 py-3 border border-border rounded-lg bg-background"
-                  placeholder="In stock"
-                  value={editInStock}
-                  onChange={(e) => setEditInStock(e.target.value)}
-                  disabled={loading}
-                />
-
-                <label className="flex items-center gap-2 text-sm md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={editIsActive}
-                    onChange={(e) => setEditIsActive(e.target.checked)}
-                    disabled={loading}
-                  />
-                  Active (show on website)
-                </label>
-              </div>
-
-              <div className="mt-5 flex gap-2 justify-end">
-                <button
-                  onClick={() => setEditing(null)}
-                  disabled={loading}
-                  className="px-4 py-2 border border-border rounded-lg hover:bg-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveEdit}
-                  disabled={loading}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90"
-                >
-                  {loading ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-
-              <p className="mt-3 text-xs text-muted-foreground">
-                * Edit này chưa đổi ảnh. Nếu muốn đổi ảnh, mình sẽ thêm PATCH multipart cho image.
-              </p>
-            </div>
-          </div>
-        )}
+        <button onClick={createItem} disabled={loading} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded-lg">
+          {loading ? 'Đang xử lý...' : 'Tạo mới'}
+        </button>
       </div>
-    </main>
+
+      {/* List */}
+      <div className="p-5 bg-card border border-border rounded-xl">
+        <h2 className="font-bold mb-4">Danh sách Mắt Kính</h2>
+        <div className="space-y-3">
+          {items.map(p => (
+            <div key={p.id} className="flex justify-between items-center p-4 border rounded-lg">
+              <div>
+                <p className="font-bold">{p.name}</p>
+                <p className="text-sm text-muted-foreground">{formatVND(p.price)}</p>
+              </div>
+              <button onClick={() => deleteItem(p.id)} className="px-3 py-1 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20">Xóa</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 2. COLLECTION TAB
+// ============================================================================
+function CollectionTab() {
+  const [items, setItems] = useState<Collection[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
+
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/collection');
+      const data = await res.json();
+      if (data.success) setItems(data.items);
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchList(); }, []);
+
+  const createItem = async () => {
+    if (!name) return setMsg('Thiếu tên bộ sưu tập');
+    setLoading(true); setMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append('name', name);
+      fd.append('description', description);
+      if (thumbnail) fd.append('thumbnail', thumbnail);
+
+      const res = await fetch('/api/collection', { method: 'POST', body: fd });
+      if (res.ok) {
+        setName(''); setDescription(''); setThumbnail(null);
+        await fetchList();
+        setMsg('Đã thêm bộ sưu tập!');
+      }
+    } catch (e) {
+      setMsg('Lỗi tạo mới');
+    } finally { setLoading(false); }
+  };
+
+  const deleteItem = async (id: string) => {
+    if (!confirm('Xóa bộ sưu tập này?')) return;
+    setLoading(true);
+    await fetch(`/api/collection/${id}`, { method: 'DELETE' });
+    await fetchList();
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {msg && <div className="p-3 bg-secondary rounded">{msg}</div>}
+      <div className="p-5 bg-card border rounded-xl">
+        <h2 className="font-bold mb-4">Thêm Bộ Sưu Tập</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input className="p-3 border rounded" placeholder="Tên BST" value={name} onChange={e => setName(e.target.value)} />
+          <input className="p-3 border rounded" placeholder="Mô tả" value={description} onChange={e => setDescription(e.target.value)} />
+          <input type="file" accept="image/*" className="p-2 border rounded md:col-span-2" onChange={e => setThumbnail(e.target.files?.[0] || null)} />
+        </div>
+        <button onClick={createItem} disabled={loading} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded">Thêm mới</button>
+      </div>
+
+      <div className="p-5 bg-card border rounded-xl">
+        <h2 className="font-bold mb-4">Danh sách Bộ Sưu Tập</h2>
+        <div className="space-y-3">
+          {items.map(c => (
+            <div key={c.id} className="flex justify-between items-center p-4 border rounded">
+              <p className="font-bold">{c.name}</p>
+              <button onClick={() => deleteItem(c.id)} className="px-3 py-1 bg-red-500/10 text-red-500 rounded">Xóa</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 3. USER TAB
+// ============================================================================
+function UserTab() {
+  const [items, setItems] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/users'); // CHÚ Ý: Đảm bảo bạn đã có API này ở Backend
+      const data = await res.json();
+      if (data.success) setItems(data.items);
+    } catch {
+      // Bỏ qua lỗi hiển thị để không làm phiền nếu API chưa hoàn thiện
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchList(); }, []);
+
+  const changeRole = async (id: string, newRole: string) => {
+    setLoading(true);
+    try {
+      await fetch(`/api/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      await fetchList();
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="p-5 bg-card border rounded-xl">
+      <div className="flex justify-between mb-4">
+        <h2 className="font-bold">Quản lý User</h2>
+        <button onClick={fetchList} className="text-sm px-3 py-1 bg-secondary rounded">Làm mới</button>
+      </div>
+      
+      {items.length === 0 ? (
+        <p className="text-muted-foreground text-sm">Chưa có dữ liệu hoặc API /api/users chưa được tạo.</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map(u => (
+            <div key={u.id} className="flex justify-between items-center p-4 border rounded">
+              <div>
+                <p className="font-bold">{u.email}</p>
+                <p className="text-sm text-muted-foreground">{u.name || 'No name'} • {u.phone || 'No phone'}</p>
+              </div>
+              <select 
+                className="p-2 border rounded bg-background" 
+                value={u.role} 
+                onChange={e => changeRole(u.id, e.target.value)}
+                disabled={loading}
+              >
+                <option value="USER">USER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
