@@ -26,6 +26,9 @@ export async function POST(req: Request) {
 
     const description = (form.get("description") ? String(form.get("description")) : undefined)?.trim();
 
+    // Xử lý field highlight (từ chuỗi sang boolean)
+    const highlight = form.get("highlight") === "true";
+
     // Xử lý upload ảnh thumbnail
     let thumbnailUrl = null;
     const thumbnail = form.get("thumbnail");
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
         name,
         description,
         thumbnail: thumbnailUrl,
+        highlight, // Lưu vào database
       },
     });
 

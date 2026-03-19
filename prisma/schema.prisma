@@ -36,6 +36,7 @@ model Collection {
   name        String   @unique
   description String?
   thumbnail   String?  
+  highlight   Boolean  @default(false) // <-- Thêm trường này
   
   glasses     Glass[]  
   

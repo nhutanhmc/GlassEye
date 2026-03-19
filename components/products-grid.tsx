@@ -1,24 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ProductCard } from './product-card';
-import { ProductFilter } from './product-filter';
+import { ProductFilter, FilterOptions } from './product-filter';
 import { ProductPagination } from './product-pagination';
-
-type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
-
-interface FilterOptions {
-  searchQuery: string;
-  priceRange: [number, number];
-  sortBy: SortBy;
-}
 
 interface ApiProduct {
   id: string;
   name: string;
   price: number;
   salePrice?: number | null;
-  imageUrl?: string | null;
+  images?: string[];
   brand?: string | null;
   createdAt?: string;
 }
@@ -35,10 +28,13 @@ interface ApiListResponse {
 const PAGE_SIZE = 20;
 
 export function ProductsGrid() {
+  const searchParams = useSearchParams();
+  const urlCollectionId = searchParams.get('collectionId');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterOptions>({
     searchQuery: '',
-    priceRange: [0, 50_000_000], // VND range default
+    priceRange: [0, 50_000_000],
     sortBy: 'name-asc',
   });
 
@@ -47,7 +43,6 @@ export function ProductsGrid() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Fetch list (server-side pagination)
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
@@ -56,6 +51,9 @@ export function ProductsGrid() {
         params.set('page', String(currentPage));
         params.set('limit', String(PAGE_SIZE));
         if (filters.searchQuery.trim()) params.set('q', filters.searchQuery.trim());
+        if (urlCollectionId) {
+          params.set('collectionId', urlCollectionId);
+        }
 
         const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
         const data: ApiListResponse = await res.json();
@@ -75,9 +73,8 @@ export function ProductsGrid() {
     };
 
     fetchProducts();
-  }, [currentPage, filters.searchQuery]);
+  }, [currentPage, filters.searchQuery, urlCollectionId]);
 
-  // client-side filter (price range) + sort (trên page hiện tại)
   const viewItems = useMemo(() => {
     let result = apiItems.filter((p) => {
       const finalPrice = (p.salePrice ?? p.price) ?? 0;
@@ -112,33 +109,35 @@ export function ProductsGrid() {
     document.querySelector('[data-products-section]')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // maxPrice dùng để set slider (nếu page rỗng thì fallback)
   const maxPrice = useMemo(() => {
     const prices = apiItems.map((p) => p.salePrice ?? p.price).filter(Boolean) as number[];
     return prices.length ? Math.max(...prices) : 50_000_000;
   }, [apiItems]);
 
   return (
-    <section className="py-12 sm:py-16 bg-background" data-products-section data-theme="light">
+    <section className="py-16 sm:py-20 bg-background" data-products-section>
       <div className="max-w-7xl mx-auto px-2 sm:px-4">
-        <div className="text-center mb-10">
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Featured Collection
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4 text-balance">
+            Our Collection
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Curated selection of premium eyewear for every style and occasion
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto text-pretty">
+            Discover our carefully curated selection of premium products
           </p>
         </div>
 
         <ProductFilter onFilterChange={handleFilterChange} maxPrice={maxPrice} />
 
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">Loading products...</p>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent mb-4"></div>
+              <p className="text-muted-foreground">Loading products...</p>
+            </div>
           </div>
         ) : viewItems.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
               {viewItems.map((p) => (
                 <ProductCard
                   key={p.id}
@@ -146,10 +145,7 @@ export function ProductsGrid() {
                   name={p.name}
                   price={p.price}
                   salePrice={p.salePrice ?? undefined}
-                  imageUrl={p.imageUrl}
-                  // rating/reviews/badge bạn có thể thêm sau (hiện mock)
-                  rating={5}
-                  reviews={0}
+                  imageUrl={p.images && p.images.length > 0 ? p.images[0] : undefined}
                 />
               ))}
             </div>
@@ -165,7 +161,8 @@ export function ProductsGrid() {
             )}
           </>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-20">
+            <div className="inline-block text-6xl mb-4">🔍</div>
             <p className="text-muted-foreground text-lg">
               No products found matching your criteria.
             </p>

@@ -2,21 +2,19 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface ProductPaginationProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  totalItems: number;
-  pageSize: number;
-}
-
 export function ProductPagination({
   currentPage,
   totalPages,
   onPageChange,
   totalItems,
   pageSize,
-}: ProductPaginationProps) {
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+  pageSize: number;
+}) {
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
@@ -52,14 +50,11 @@ export function ProductPagination({
 
   return (
     <div className="mt-12 flex flex-col items-center gap-4">
-      {/* Info Text */}
       <p className="text-sm text-muted-foreground">
         Showing {startItem}-{endItem} of {totalItems} products
       </p>
 
-      {/* Pagination Controls */}
       <div className="flex items-center gap-2">
-        {/* Previous Button */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
@@ -69,7 +64,6 @@ export function ProductPagination({
           <ChevronLeft className="w-5 h-5" />
         </button>
 
-        {/* Page Numbers */}
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, index) => (
             <button
@@ -89,7 +83,6 @@ export function ProductPagination({
           ))}
         </div>
 
-        {/* Next Button */}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}

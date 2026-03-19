@@ -32,7 +32,7 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/40">
       <div className="max-w-full mx-auto px-2 sm:px-4">
         <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Logo */}
+          {/* Logo - Bấm vào đây sẽ về trang chủ (/) */}
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <div className="w-10 h-10 bg-primary rounded-md flex items-center justify-center hover:shadow-lg transition-shadow">
               <span className="text-primary-foreground font-serif font-bold text-lg">A</span>
@@ -44,8 +44,8 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8 flex-1 justify-center ml-8">
-            <Link href="#" className="text-foreground text-sm font-medium hover:text-accent transition-colors duration-300 relative group">
-              Sunglasses
+            <Link href="/products" className="text-foreground text-sm font-medium hover:text-accent transition-colors duration-300 relative group">
+              Products
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent group-hover:w-full transition-all duration-300" />
             </Link>
             <Link href="#" className="text-foreground text-sm font-medium hover:text-accent transition-colors duration-300 relative group">
@@ -135,19 +135,19 @@ export function Header() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-border/40 py-4 space-y-1 pb-6">
-            <Link href="#" className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
-              Sunglasses
+            <Link href="/products" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
+              Products
             </Link>
-            <Link href="#" className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
+            <Link href="#" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
               Optical
             </Link>
-            <Link href="#" className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
+            <Link href="#" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
               Frames
             </Link>
-            <Link href="#" className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
+            <Link href="#" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
               Sale
             </Link>
-            <Link href="/about" className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
+            <Link href="/about" onClick={() => setIsMenuOpen(false)} className="block px-4 py-3 text-foreground hover:text-accent hover:bg-secondary rounded-lg transition-colors text-sm font-medium">
               About
             </Link>
 

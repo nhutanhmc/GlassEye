@@ -26,7 +26,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const { id } = await ctx.params;
     if (!isObjectId(id)) return NextResponse.json({ success: false, message: "Invalid id" }, { status: 400 });
 
-    const body = await req.json(); // Dùng JSON cho gọn nếu bạn chỉ sửa text, nếu có sửa ảnh thì update lại logic FormData nhé
+    const body = await req.json();
 
     const updated = await prisma.collection.update({
       where: { id },
@@ -34,6 +34,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         name: body.name,
         description: body.description,
         thumbnail: body.thumbnail,
+        // Cập nhật highlight nếu có truyền lên
+        highlight: body.highlight !== undefined ? Boolean(body.highlight) : undefined,
       },
     });
 

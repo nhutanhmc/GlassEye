@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 // TYPES
 // ============================================================================
 type User = { id: string; email: string; role: string; name: string | null; phone: string | null };
-type Collection = { id: string; name: string; description: string | null; thumbnail: string | null };
+// Đã thêm trường highlight vào type Collection
+type Collection = { id: string; name: string; description: string | null; thumbnail: string | null; highlight: boolean };
 type Glass = { id: string; name: string; description: string | null; price: number; collectionId: string; images: string[] };
 
 function formatVND(v: number) {
@@ -17,7 +18,7 @@ function formatVND(v: number) {
 // MAIN COMPONENT (TABS ROUTER)
 // ============================================================================
 export default function AdminPage() {
-  const [tab, setTab] = useState<'glasses' | 'collections' | 'users'>('glasses');
+  const [tab, setTab] = useState<'glasses' | 'collection' | 'users'>('glasses');
 
   return (
     <main className="min-h-screen bg-background">
@@ -26,22 +27,22 @@ export default function AdminPage() {
         <p className="text-muted-foreground mb-6">Quản lý toàn bộ dữ liệu hệ thống (Yêu cầu quyền ADMIN).</p>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-8 border-b border-border pb-2">
+        <div className="flex gap-2 mb-8 border-b border-border pb-2 overflow-x-auto">
           <button
             onClick={() => setTab('glasses')}
-            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'glasses' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+            className={`px-4 py-2 font-bold rounded-t-lg whitespace-nowrap ${tab === 'glasses' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
           >
             Mắt Kính (Glasses)
           </button>
           <button
-            onClick={() => setTab('collections')}
-            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'collections' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+            onClick={() => setTab('collection')}
+            className={`px-4 py-2 font-bold rounded-t-lg whitespace-nowrap ${tab === 'collection' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
           >
-            Bộ Sưu Tập (Collections)
+            Bộ Sưu Tập (collection)
           </button>
           <button
             onClick={() => setTab('users')}
-            className={`px-4 py-2 font-bold rounded-t-lg ${tab === 'users' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
+            className={`px-4 py-2 font-bold rounded-t-lg whitespace-nowrap ${tab === 'users' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-secondary'}`}
           >
             Tài Khoản (Users)
           </button>
@@ -49,7 +50,7 @@ export default function AdminPage() {
 
         {/* Tab Content */}
         {tab === 'glasses' && <GlassTab />}
-        {tab === 'collections' && <CollectionTab />}
+        {tab === 'collection' && <CollectionTab />}
         {tab === 'users' && <UserTab />}
       </div>
     </main>
@@ -61,7 +62,7 @@ export default function AdminPage() {
 // ============================================================================
 function GlassTab() {
   const [items, setItems] = useState<Glass[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collection, setcollection] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -77,13 +78,13 @@ function GlassTab() {
     try {
       const [resGlass, resCol] = await Promise.all([
         fetch('/api/products?page=1&limit=50', { cache: 'no-store' }),
-        fetch('/api/collection', { cache: 'no-store' })
+        fetch('/api/collection', { cache: 'no-store' }) // Sửa lại thành số nhiều theo api bạn đã gửi
       ]);
       const dataGlass = await resGlass.json();
       const dataCol = await resCol.json();
       
       if (dataGlass.success) setItems(dataGlass.items);
-      if (dataCol.success) setCollections(dataCol.items);
+      if (dataCol.success) setcollection(dataCol.items);
     } catch (e: any) {
       setMsg(e?.message || 'Lỗi tải danh sách');
     } finally {
@@ -127,7 +128,7 @@ function GlassTab() {
     if (!confirm('Xóa mắt kính này?')) return;
     setLoading(true);
     try {
-      await fetch(`/api/product/${id}`, { method: 'DELETE' });
+      await fetch(`/api/products/${id}`, { method: 'DELETE' }); // Điều chỉnh đường dẫn nếu cần
       await fetchList();
     } finally {
       setLoading(false);
@@ -147,7 +148,7 @@ function GlassTab() {
           <input className="p-3 border rounded bg-background" placeholder="Mô tả" value={description} onChange={e => setDescription(e.target.value)} />
           <select className="p-3 border rounded bg-background" value={collectionId} onChange={e => setCollectionId(e.target.value)}>
             <option value="">-- Chọn Bộ Sưu Tập --</option>
-            {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {collection.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <div className="md:col-span-2">
             <label className="block text-sm mb-1">Upload Ảnh (Chọn nhiều ảnh)</label>
@@ -189,11 +190,14 @@ function CollectionTab() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [thumbnail, setThumbnail] = useState<File | null>(null);
+  
+  // Thêm state highlight
+  const [highlight, setHighlight] = useState(false);
 
   const fetchList = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/collection');
+      const res = await fetch('/api/collection'); // Cập nhật sang collection
       const data = await res.json();
       if (data.success) setItems(data.items);
     } finally { setLoading(false); }
@@ -208,11 +212,15 @@ function CollectionTab() {
       const fd = new FormData();
       fd.append('name', name);
       fd.append('description', description);
+      
+      // Gắn thêm highlight vào form data
+      fd.append('highlight', String(highlight));
+
       if (thumbnail) fd.append('thumbnail', thumbnail);
 
-      const res = await fetch('/api/collection', { method: 'POST', body: fd });
+      const res = await fetch('/api/collection', { method: 'POST', body: fd }); // Cập nhật sang collection
       if (res.ok) {
-        setName(''); setDescription(''); setThumbnail(null);
+        setName(''); setDescription(''); setThumbnail(null); setHighlight(false);
         await fetchList();
         setMsg('Đã thêm bộ sưu tập!');
       }
@@ -224,7 +232,7 @@ function CollectionTab() {
   const deleteItem = async (id: string) => {
     if (!confirm('Xóa bộ sưu tập này?')) return;
     setLoading(true);
-    await fetch(`/api/collection/${id}`, { method: 'DELETE' });
+    await fetch(`/api/collection/${id}`, { method: 'DELETE' }); // Cập nhật sang collection
     await fetchList();
     setLoading(false);
   };
@@ -235,11 +243,32 @@ function CollectionTab() {
       <div className="p-5 bg-card border rounded-xl">
         <h2 className="font-bold mb-4">Thêm Bộ Sưu Tập</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input className="p-3 border rounded" placeholder="Tên BST" value={name} onChange={e => setName(e.target.value)} />
-          <input className="p-3 border rounded" placeholder="Mô tả" value={description} onChange={e => setDescription(e.target.value)} />
-          <input type="file" accept="image/*" className="p-2 border rounded md:col-span-2" onChange={e => setThumbnail(e.target.files?.[0] || null)} />
+          <input className="p-3 border rounded bg-background" placeholder="Tên BST" value={name} onChange={e => setName(e.target.value)} />
+          <input className="p-3 border rounded bg-background" placeholder="Mô tả" value={description} onChange={e => setDescription(e.target.value)} />
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">Ảnh đại diện (Thumbnail)</label>
+            <input type="file" accept="image/*" className="w-full p-2 border rounded bg-background" onChange={e => setThumbnail(e.target.files?.[0] || null)} />
+          </div>
+
+          {/* Cụm checkbox Highlight */}
+          <div className="md:col-span-2 flex items-center space-x-2 mt-2">
+            <input 
+              type="checkbox" 
+              id="highlight" 
+              checked={highlight} 
+              onChange={e => setHighlight(e.target.checked)} 
+              className="w-5 h-5 accent-primary cursor-pointer"
+            />
+            <label htmlFor="highlight" className="cursor-pointer select-none font-medium">
+              Hiển thị lên phần "Bộ sưu tập nổi bật" ở Trang chủ
+            </label>
+          </div>
+
         </div>
-        <button onClick={createItem} disabled={loading} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded">Thêm mới</button>
+        <button onClick={createItem} disabled={loading} className="mt-4 px-5 py-2 bg-primary text-primary-foreground rounded">
+          {loading ? 'Đang xử lý...' : 'Thêm mới'}
+        </button>
       </div>
 
       <div className="p-5 bg-card border rounded-xl">
@@ -247,7 +276,18 @@ function CollectionTab() {
         <div className="space-y-3">
           {items.map(c => (
             <div key={c.id} className="flex justify-between items-center p-4 border rounded">
-              <p className="font-bold">{c.name}</p>
+              <div>
+                <p className="font-bold flex items-center gap-2">
+                  {c.name}
+                  {/* Badge hiển thị nếu là nổi bật */}
+                  {c.highlight && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-yellow-400 text-yellow-900 rounded">
+                      Nổi bật
+                    </span>
+                  )}
+                </p>
+                {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
+              </div>
               <button onClick={() => deleteItem(c.id)} className="px-3 py-1 bg-red-500/10 text-red-500 rounded">Xóa</button>
             </div>
           ))}

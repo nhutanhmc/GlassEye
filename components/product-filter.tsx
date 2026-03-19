@@ -1,30 +1,35 @@
 'use client';
 
-import React from "react"
-
-import { useEffect, useState } from 'react';
-
+import React, { useEffect, useState } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 
-interface FilterOptions {
+export type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
+
+export interface FilterOptions {
   searchQuery: string;
   priceRange: [number, number];
-  sortBy: 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc';
+  sortBy: SortBy;
 }
 
-interface ProductFilterProps {
+const formatVND = (v: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v);
+
+export function ProductFilter({
+  onFilterChange,
+  maxPrice,
+}: {
   onFilterChange: (filters: FilterOptions) => void;
   maxPrice: number;
-}
-
-export function ProductFilter({ onFilterChange, maxPrice }: ProductFilterProps) {
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
-  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'>('name-asc');
+  const [sortBy, setSortBy] = useState<SortBy>('name-asc');
   const [showPriceFilter, setShowPriceFilter] = useState(false);
+
   useEffect(() => {
     setPriceRange([0, maxPrice]);
   }, [maxPrice]);
+
   const handleFilterChange = () => {
     onFilterChange({
       searchQuery,
@@ -48,17 +53,15 @@ export function ProductFilter({ onFilterChange, maxPrice }: ProductFilterProps) 
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortBy(e.target.value as any);
+    setSortBy(e.target.value as SortBy);
   };
 
-  // Apply filters whenever they change
   const applyFilters = () => {
     handleFilterChange();
   };
 
   return (
-    <div className="mb-10 pb-6 border-b border-border/50">
-      {/* Search and Sort Bar */}
+    <div className="mb-10 pb-6 border-b border-border">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         {/* Search Input */}
         <div className="w-full sm:w-80 relative">
@@ -104,7 +107,7 @@ export function ProductFilter({ onFilterChange, maxPrice }: ProductFilterProps) 
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-foreground mb-3">
-                Min: <span className="text-accent">${priceRange[0].toFixed(2)}</span>
+                Min: <span className="text-accent font-bold">{formatVND(priceRange[0])}</span>
               </label>
               <input
                 type="range"
@@ -122,7 +125,7 @@ export function ProductFilter({ onFilterChange, maxPrice }: ProductFilterProps) 
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-3">
-                Max: <span className="text-accent">${priceRange[1].toFixed(2)}</span>
+                Max: <span className="text-accent font-bold">{formatVND(priceRange[1])}</span>
               </label>
               <input
                 type="range"
